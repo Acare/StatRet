@@ -475,6 +475,41 @@ mu %>%
   geom_line(aes(group = nsim)) +
   theme_bw()
 
+# a ~ dnorm(178, 20)
+# b1 ~ dlnorm(0, 1) più spostato a destra o a sinistra a seconda di b2
+# b2 ~ dlnorm(0, 1) solo negativo o solo positivo
+
+# 4H5
+data("cherry_blossoms"); d <- cherry_blossoms
+
+d2 <- d %>% select(year, doy, temp) %>% filter(complete.cases(doy, temp))
+d2$t <- standardize(d2$temp)
+
+# linear
+m4.5 <- quap(
+  alist(
+    doy ~ dnorm(mu, sigma),
+    mu <- a + b*t,
+    a ~ dnorm(75, 8),
+    b ~ dnorm(0, 1),
+    sigma ~ dunif(0, 50)
+  ), data = d2
+)
+
+data_ribbon_4.5 <- rbind(apply(link(m4.5), 2, mean), apply(link(m4.5), 2, PI, 0.97),
+                         apply(sim(m4.5, n = 1e4), 2, PI, 0.97)) %>%
+  t() %>% as.data.frame() %>%
+  rename(mean = 1, mu_PI2 = 2, mu_PI98 = 3, h_PI2 = 4, h_PI98 = 5)
+
+d2 %>% bind_cols(data_ribbon_4.5) %>%
+  ggplot(aes(temp, doy)) +
+  geom_ribbon(aes(ymin = h_PI2, ymax = h_PI98), alpha = 0.3, fill = "cyan") +
+  geom_ribbon(aes(ymin = mu_PI2, ymax = mu_PI98), alpha = 0.5, color = "lightgrey") +
+  geom_point(alpha = 0.6, size = 2, color = "blue") +
+  geom_line(aes(temp, mean), color = "red") +
+  theme_bw() +
+  labs(x = "temperature", y = "day of year", title = "Posterior predictive simulations of m4.5")
+
 
 # CHAPTER 5 ---------------------------------------------------------------
 
